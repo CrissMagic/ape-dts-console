@@ -819,7 +819,7 @@ export function DataSourcesPage({
                 },
               }}
               rowKey="id"
-              scroll={{ x: 850, y: 'max(160px, calc(100dvh - 320px))' }}
+              scroll={{ x: 850 }}
             />
           </Card>
         </>

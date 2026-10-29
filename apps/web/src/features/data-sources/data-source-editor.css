@@ -17,6 +17,15 @@
 .data-source-catalog-card {
   min-width: 0;
 }
+.data-source-catalog-card .ant-table-content {
+  max-height: max(160px, calc(100dvh - 320px));
+  overflow-y: auto;
+}
+.data-source-catalog-card .ant-table-thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
 
 .data-sources-page.is-editing,
 .data-source-editor {

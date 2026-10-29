@@ -39,6 +39,12 @@ afterEach(() => {
 beforeEach(() => {
   vi.spyOn(tasksApi, 'list').mockResolvedValue({ tasks: [] });
   vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [] });
+  vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue({
+    dataSources: [],
+    total: 0,
+    page: 1,
+    pageSize: 10,
+  });
   vi.spyOn(taskGroupsApi, 'list').mockResolvedValue({ groups: [] });
   vi.spyOn(auditApi, 'list').mockResolvedValue({ events: [], nextCursor: null });
 });
