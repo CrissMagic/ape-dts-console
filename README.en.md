@@ -12,7 +12,9 @@ This is an independent community project, not an official ApeCloud product. The 
 | ------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------- |
 | PostgreSQL → Kafka | Optional initial snapshot followed by CDC | Table/topic mappings, replication slots and publications, preflight, monitoring, recovery |
 | MySQL → Kafka      | Optional initial snapshot followed by CDC | Binlog inspection, mappings, checkpoints, recovery, explicit reinitialization             |
-| Kafka → Kafka Raw  | Continuous forwarding                     | Multi-topic mappings, partition execution units, consumer-group progress                  |
+| Kafka → Kafka Raw  | Continuous forwarding (extended engine)   | Multi-topic mappings, partition execution units, consumer-group progress                  |
+
+**Continuous Kafka-to-Kafka raw forwarding is an extension in the community-maintained fork, not a standard capability of the current upstream ape-dts release.** It requires an engine artifact containing that extension. An upstream binary cannot be assumed to support every task shown by the console. See [engine provenance and compatibility](docs/operations/engine-compatibility.md).
 
 Other features include task cards and shared groups, server-side datasource search and pagination, datasource access grants, artifact uploads, live filtered logs, historical runs, metrics retained for up to seven days, WeCom alerts, configurable automatic recovery, audit records, and configuration import/export without passwords. The UI is currently Chinese, supports light/dark themes, and displays dates in Asia/Shanghai.
 

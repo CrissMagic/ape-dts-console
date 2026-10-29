@@ -16,6 +16,7 @@
 - [配置导入导出](operations/config-transfer.md)
 - [任务组](operations/task-groups.md)
 - [制品管理](operations/artifact-file-registration.md)
+- [引擎来源与兼容性](operations/engine-compatibility.md)
 - [容量说明](operations/capacity-envelope.md)
 
 中文为默认文档语言，欢迎补充英文翻译。以当前源码、操作文档和对应版本的验证结果为准；不要把引擎支持矩阵当成平台已经接入的任务列表。
