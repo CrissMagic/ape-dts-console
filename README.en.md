@@ -14,7 +14,7 @@ This is an independent community project, not an official ApeCloud product. The 
 | MySQL → Kafka      | Optional initial snapshot followed by CDC | Binlog inspection, mappings, checkpoints, recovery, explicit reinitialization             |
 | Kafka → Kafka Raw  | Continuous forwarding                     | Multi-topic mappings, partition execution units, consumer-group progress                  |
 
-Other features include task cards and shared groups, datasource access grants, artifact uploads, live filtered logs, historical runs, metrics retained for up to seven days, WeCom alerts, configurable automatic recovery, audit records, and configuration import/export without passwords. The UI is currently Chinese, supports light/dark themes, and displays dates in Asia/Shanghai.
+Other features include task cards and shared groups, server-side datasource search and pagination, datasource access grants, artifact uploads, live filtered logs, historical runs, metrics retained for up to seven days, WeCom alerts, configurable automatic recovery, audit records, and configuration import/export without passwords. The UI is currently Chinese, supports light/dark themes, and displays dates in Asia/Shanghai.
 
 Doris can currently be registered and inspected as a datasource but cannot be selected as a task sink. See the [roadmap](docs/roadmap.md) for planned pipelines. Actual compatibility depends on the engine artifact, database versions, and deployment environment.
 
@@ -25,7 +25,7 @@ Requirements: Linux x86_64, Docker, an external PostgreSQL database dedicated to
 ```sh
 git clone https://github.com/CrissMagic/ape-dts-console.git
 cd ape-dts-console
-docker build -t ape-dts-console:1.0.0 .
+docker build -t ape-dts-console:local .
 sudo install -d -o 10001 -g 10001 -m 0700 \
   /srv/ape-dts-console/storage /srv/ape-dts-console/artifact-cache
 install -m 0600 .env.example platform.env
@@ -36,10 +36,11 @@ docker run -d --name ape-dts-console \
   --cpus 4 --memory 8g \
   --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 \
   --env-file ./platform.env \
+  --env SCS_PLATFORM_VERSION="$(git rev-parse --short HEAD)" \
   -p 127.0.0.1:18088:3000 \
   --mount type=bind,src=/srv/ape-dts-console/storage,dst=/data/storage \
   --mount type=bind,src=/srv/ape-dts-console/artifact-cache,dst=/var/cache/ape-dts-platform/artifacts \
-  ape-dts-console:1.0.0
+  ape-dts-console:local
 ```
 
 Visit `http://127.0.0.1:18088/`. After successful initialization, container logs show a random temporary password for `admin`. Change it at first login and restrict access to these logs. Normal restarts do not reset the password.

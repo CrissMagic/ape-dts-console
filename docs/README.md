@@ -3,6 +3,7 @@
 - [快速开始](../README.md) · [English](../README.en.md)
 - [开发与测试](development.md)
 - [路线图](roadmap.md)
+- [数据源搜索与分页](operations/data-sources.md)
 - [Docker 部署](operations/docker-server-deployment.md)
 - [更新脚本与故障续跑](operations/server-update-script.md)
 - [管理员和会话](operations/password-authentication.md)

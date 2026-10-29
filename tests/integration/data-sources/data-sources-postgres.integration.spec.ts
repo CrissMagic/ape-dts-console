@@ -248,6 +248,65 @@ afterAll(async () => {
 });
 
 describe('data source catalog against the supplied PostgreSQL 12 container', () => {
+  it('searches and pages only active authorized metadata, including literal search text and empty results', async () => {
+    const catalog = requireService();
+    const sources = [];
+    for (let index = 0; index < 12; index += 1) {
+      sources.push(
+        await catalog.create(administrator.id, {
+          name: `catalog-kafka-${String(index).padStart(2, '0')}`,
+          configuration: {
+            type: 'KAFKA',
+            bootstrapServers: ['catalog-broker.example:9092'],
+            plaintextRiskAcknowledged: true,
+          },
+          credentials: { mode: 'NONE' },
+        }),
+      );
+    }
+    const query = { page: 1, pageSize: 10 as const, q: 'CATALOG-KAFKA' };
+    const first = await catalog.catalog(administrator, query);
+    expect(first.total).toBe(12);
+    expect(first.dataSources.map((source) => source.id)).toEqual(
+      sources.slice(0, 10).map((source) => source.id),
+    );
+    const last = await catalog.catalog(administrator, { ...query, page: 999 });
+    expect(last).toMatchObject({ page: 2, total: 12 });
+    expect(last.dataSources.map((source) => source.id)).toEqual(
+      sources.slice(10).map((source) => source.id),
+    );
+    expect(
+      await catalog.catalog(administrator, { ...query, page: 999, type: 'MYSQL' }),
+    ).toMatchObject({ page: 1, total: 0, dataSources: [] });
+    expect(await catalog.catalog(administrator, { ...query, q: '%' })).toMatchObject({
+      total: 0,
+      dataSources: [],
+    });
+    expect(
+      await catalog.catalog(administrator, {
+        ...query,
+        q: 'catalog-broker.example:9092',
+        pageSize: 20,
+      }),
+    ).toMatchObject({ total: 12, pageSize: 20 });
+    expect(await catalog.catalog(developer, query)).toMatchObject({ total: 0, dataSources: [] });
+    await catalog.grant(administrator, sources[0]!.id, { userId: developer.id });
+    await catalog.grant(administrator, sources[11]!.id, { userId: developer.id });
+    const granted = await catalog.catalog(developer, { ...query, page: 999 });
+    expect(granted).toMatchObject({ page: 1, total: 2 });
+    expect(granted.dataSources.map((source) => source.id)).toEqual([
+      sources[0]!.id,
+      sources[11]!.id,
+    ]);
+    for (const source of sources)
+      await catalog.delete(administrator.id, source.id, source.rowVersion);
+    expect(await catalog.catalog(administrator, query)).toMatchObject({
+      total: 0,
+      dataSources: [],
+    });
+    expect(await catalog.catalog(developer, query)).toMatchObject({ total: 0, dataSources: [] });
+  });
+
   it('copies connection credentials into an independent source without inheriting grants', async () => {
     const catalog = requireService();
     const source = await catalog.create(administrator.id, {

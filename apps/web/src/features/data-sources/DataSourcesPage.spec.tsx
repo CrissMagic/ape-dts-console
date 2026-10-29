@@ -58,6 +58,14 @@ const mysqlSource: DataSourceSummary = {
   name: 'mysql-source',
 };
 
+function catalogResult(
+  dataSources: readonly DataSourceSummary[],
+  page = 1,
+  total = dataSources.length,
+) {
+  return { dataSources: [...dataSources], page, pageSize: 10 as const, total };
+}
+
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
   const promise = new Promise<T>((resolvePromise) => {
@@ -72,10 +80,93 @@ afterEach(() => {
 });
 
 describe('DataSourcesPage', () => {
-  it('marks imported sources as needing credentials and does not offer to retain a nonexistent password', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({
-      dataSources: [{ ...createdSource, credentialsRequired: true }],
+  it('requests pages from the server and resets the page when searching', async () => {
+    const catalog = vi.spyOn(dataSourcesApi, 'catalog').mockImplementation(async (query) => ({
+      dataSources: [{ ...createdSource, name: query.q || `page-${query.page}` }],
+      page: query.page,
+      pageSize: query.pageSize,
+      total: 21,
+    }));
+    vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
+    render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
+    expect(await screen.findByText('page-1')).toBeInTheDocument();
+    expect(catalog).toHaveBeenCalledWith({ page: 1, pageSize: 10, q: '' });
+    fireEvent.click(screen.getByTitle('2'));
+    expect(await screen.findByText('page-2')).toBeInTheDocument();
+    expect(screen.queryByText('page-1')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('搜索数据源'), { target: { value: 'warehouse' } });
+    expect(await screen.findByText('warehouse')).toBeInTheDocument();
+    expect(catalog).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, q: 'warehouse' });
+    expect(screen.getByRole('combobox', { name: '数据源每页条数' })).toBeInTheDocument();
+  });
+
+  it('changes page size and type through the existing table controls', async () => {
+    const catalog = vi.spyOn(dataSourcesApi, 'catalog').mockImplementation(async (query) => ({
+      dataSources: [createdSource],
+      page: query.page,
+      pageSize: query.pageSize,
+      total: 51,
+    }));
+    vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
+    render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
+    await screen.findByText(createdSource.name);
+    fireEvent.click(screen.getByTitle('2'));
+    await waitFor(() => expect(catalog).toHaveBeenLastCalledWith({ page: 2, pageSize: 10, q: '' }));
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '数据源每页条数' }));
+    fireEvent.click(screen.getByText('20 / page', { selector: '.ant-select-item-option-content' }));
+    await waitFor(() => expect(catalog).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, q: '' }));
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '数据源类型筛选' }));
+    fireEvent.click(screen.getByText('Kafka', { selector: '.ant-select-item-option-content' }));
+    await waitFor(() =>
+      expect(catalog).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, q: '', type: 'KAFKA' }),
+    );
+  });
+
+  it('ignores a superseded search response and keeps the newest result', async () => {
+    const oldResult = deferred<ReturnType<typeof catalogResult>>();
+    const catalog = vi
+      .spyOn(dataSourcesApi, 'catalog')
+      .mockResolvedValueOnce(catalogResult([createdSource]))
+      .mockReturnValueOnce(oldResult.promise)
+      .mockResolvedValue(catalogResult([otherSource]));
+    vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
+    render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
+    await screen.findByText(createdSource.name);
+    fireEvent.change(screen.getByLabelText('搜索数据源'), { target: { value: 'older' } });
+    await waitFor(() => expect(catalog).toHaveBeenCalledTimes(2));
+    fireEvent.change(screen.getByLabelText('搜索数据源'), { target: { value: 'newer' } });
+    expect(await screen.findByText(otherSource.name)).toBeInTheDocument();
+    await act(async () => {
+      oldResult.resolve(catalogResult([createdSource]));
+      await oldResult.promise;
     });
+    expect(screen.queryByText(createdSource.name)).not.toBeInTheDocument();
+    expect(screen.getByText(otherSource.name)).toBeInTheDocument();
+  });
+
+  it('keeps a saved source editable when its new name no longer matches the list filter', async () => {
+    const updated = { ...createdSource, name: 'renamed-source', rowVersion: '2' };
+    vi.spyOn(dataSourcesApi, 'catalog')
+      .mockResolvedValueOnce(catalogResult([createdSource]))
+      .mockResolvedValue(catalogResult([]));
+    vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
+    vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
+    vi.spyOn(dataSourcesApi, 'update').mockResolvedValue(updated);
+    render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
+    fireEvent.click(await screen.findByRole('button', { name: `${createdSource.name} 编辑` }));
+    fireEvent.change(screen.getByLabelText('名称'), { target: { value: updated.name } });
+    fireEvent.click(screen.getByRole('button', { name: '保存修改' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '我已了解此操作的影响，并确认继续。' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认执行' }));
+    await waitFor(() => expect(screen.getByLabelText('名称')).toHaveValue(updated.name));
+    await waitFor(() => expect(screen.getByRole('button', { name: '保存修改' })).toBeDisabled());
+    expect(screen.getByRole('heading', { name: '编辑数据源' })).toBeInTheDocument();
+  });
+
+  it('marks imported sources as needing credentials and does not offer to retain a nonexistent password', async () => {
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(
+      catalogResult([{ ...createdSource, credentialsRequired: true }]),
+    );
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
@@ -86,7 +177,7 @@ describe('DataSourcesPage', () => {
     expect(screen.getByRole('button', { name: '保留原密码' })).toBeDisabled();
   });
   it('uses a dedicated settings page, retains the draft between sections and only tests saved configuration', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const test = vi.spyOn(dataSourcesApi, 'test');
@@ -118,9 +209,9 @@ describe('DataSourcesPage', () => {
 
   it('replaces a password only when explicitly requested and clears the replacement when retaining it again', async () => {
     const updated = { ...createdSource, name: 'renamed-source', rowVersion: '2' };
-    vi.spyOn(dataSourcesApi, 'list')
-      .mockResolvedValueOnce({ dataSources: [createdSource] })
-      .mockResolvedValue({ dataSources: [updated] });
+    vi.spyOn(dataSourcesApi, 'catalog')
+      .mockResolvedValueOnce(catalogResult([createdSource]))
+      .mockResolvedValue(catalogResult([updated]));
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const update = vi.spyOn(dataSourcesApi, 'update').mockResolvedValue(updated);
@@ -159,7 +250,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('shows readonly connection details without password replacement or grants for developers', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
     render(
       <DataSourcesPage
         onSessionInvalidated={vi.fn()}
@@ -176,7 +267,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('submits an explicitly entered replacement password only after confirmation', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const update = vi
@@ -218,7 +309,7 @@ describe('DataSourcesPage', () => {
         tls: { mode: 'VERIFY_FULL', caCertificate: 'test-ca-certificate' },
       },
     };
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [source] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([source]));
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
@@ -245,7 +336,7 @@ describe('DataSourcesPage', () => {
       grantedBy: administrator.user,
       grantedAt: createdSource.createdAt,
     };
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
     vi.spyOn(dataSourcesApi, 'listGrants')
       .mockResolvedValueOnce({ grants: [] })
       .mockResolvedValue({ grants: [granted] });
@@ -281,7 +372,7 @@ describe('DataSourcesPage', () => {
         plaintextRiskAcknowledged: true,
       },
     };
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [kafka] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([kafka]));
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const update = vi
@@ -309,9 +400,9 @@ describe('DataSourcesPage', () => {
 
   it('copies a source with a new name and without requesting its password', async () => {
     const copied = { ...createdSource, id: otherSource.id, name: 'business-copy' };
-    vi.spyOn(dataSourcesApi, 'list')
-      .mockResolvedValueOnce({ dataSources: [createdSource] })
-      .mockResolvedValue({ dataSources: [createdSource, copied] });
+    vi.spyOn(dataSourcesApi, 'catalog')
+      .mockResolvedValueOnce(catalogResult([createdSource]))
+      .mockResolvedValue(catalogResult([createdSource, copied]));
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const result = deferred<DataSourceSummary>();
     const copy = vi.spyOn(dataSourcesApi, 'copy').mockReturnValue(result.promise);
@@ -335,7 +426,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('preserves the copy name on conflict so the user can correct and retry', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const copy = vi
       .spyOn(dataSourcesApi, 'copy')
@@ -359,7 +450,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('only offers details to non-administrators', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
     render(
       <DataSourcesPage
         onSessionInvalidated={vi.fn()}
@@ -376,9 +467,9 @@ describe('DataSourcesPage', () => {
   });
 
   it('deletes a source from its table row only after confirmation and hides the version column', async () => {
-    vi.spyOn(dataSourcesApi, 'list')
-      .mockResolvedValueOnce({ dataSources: [createdSource] })
-      .mockResolvedValue({ dataSources: [] });
+    vi.spyOn(dataSourcesApi, 'catalog')
+      .mockResolvedValueOnce(catalogResult([createdSource]))
+      .mockResolvedValue(catalogResult([]));
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const remove = vi
       .spyOn(dataSourcesApi, 'remove')
@@ -400,7 +491,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('keeps a referenced source and explains why deletion is blocked', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     vi.spyOn(dataSourcesApi, 'remove').mockRejectedValue(
       new PlatformApiError('DATA_SOURCE_REFERENCED_BY_TASK', 409),
@@ -414,7 +505,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('can reveal and hide a connection password without submitting the form', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([]));
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const create = vi.spyOn(dataSourcesApi, 'create');
     render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
@@ -441,9 +532,9 @@ describe('DataSourcesPage', () => {
         plaintextRiskAcknowledged: true,
       },
     };
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({
-      dataSources: [createdSource, kafkaSource],
-    });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(
+      catalogResult([createdSource, kafkaSource]),
+    );
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
 
@@ -462,7 +553,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('runs a separate MySQL Binlog check and shows formatted facts plus actionable failures', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [mysqlSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([mysqlSource]));
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const inspect = vi.spyOn(dataSourcesApi, 'inspectMysqlCdc').mockResolvedValue({
@@ -492,7 +583,9 @@ describe('DataSourcesPage', () => {
   });
 
   it('does not display a MySQL check result after selecting a different source', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [mysqlSource, otherSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(
+      catalogResult([mysqlSource, otherSource]),
+    );
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const pending = deferred<Awaited<ReturnType<typeof dataSourcesApi.inspectMysqlCdc>>>();
@@ -518,7 +611,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('keeps the latest same-source check when an earlier request completes after reopening', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [mysqlSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([mysqlSource]));
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const oldCheck = deferred<Awaited<ReturnType<typeof dataSourcesApi.inspectMysqlCdc>>>();
@@ -566,7 +659,9 @@ describe('DataSourcesPage', () => {
   });
 
   it('ignores a failed check after leaving its data source and allows retry after a current failure', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [mysqlSource, otherSource] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(
+      catalogResult([mysqlSource, otherSource]),
+    );
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     let rejectOld: (error: Error) => void = () => undefined;
@@ -604,7 +699,7 @@ describe('DataSourcesPage', () => {
   });
 
   it('protects refresh and reset, and retains a draft after a failed creation', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([]));
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const create = vi.spyOn(dataSourcesApi, 'create').mockRejectedValue(new Error('offline'));
     render(
@@ -669,12 +764,12 @@ describe('DataSourcesPage', () => {
     expect(resetUnload.defaultPrevented).toBe(false);
   });
   it('requires an explicit confirmation before creating a source with an encrypted connection secret', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [] });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([]));
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const create = vi.spyOn(dataSourcesApi, 'create').mockResolvedValue(createdSource);
     render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
 
-    await waitFor(() => expect(dataSourcesApi.list).toHaveBeenCalled());
+    await waitFor(() => expect(dataSourcesApi.catalog).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: '新建数据源' }));
     fireEvent.change(screen.getByLabelText('类型'), { target: { value: 'POSTGRES' } });
     fireEvent.change(screen.getByLabelText('名称'), { target: { value: 'Business PostgreSQL' } });
@@ -713,7 +808,7 @@ describe('DataSourcesPage', () => {
   it.each([true, false])(
     'shows an inline success icon without internal identity (available: %s)',
     async (identityAvailable) => {
-      vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({ dataSources: [createdSource] });
+      vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(catalogResult([createdSource]));
       vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
       vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
       const success: Awaited<ReturnType<typeof dataSourcesApi.test>> = {
@@ -772,15 +867,15 @@ describe('DataSourcesPage', () => {
 
   it('ignores a previous visit connection test after switching sources and reopening', async () => {
     const pending = deferred<Awaited<ReturnType<typeof dataSourcesApi.test>>>();
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({
-      dataSources: [createdSource, otherSource],
-    });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(
+      catalogResult([createdSource, otherSource]),
+    );
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     const connectionTest = vi.spyOn(dataSourcesApi, 'test').mockReturnValue(pending.promise);
     render(<DataSourcesPage onSessionInvalidated={vi.fn()} session={administrator} />);
 
-    await waitFor(() => expect(dataSourcesApi.list).toHaveBeenCalled());
+    await waitFor(() => expect(dataSourcesApi.catalog).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /^business-postgres 编辑$/ }));
     await waitFor(() => expect(dataSourcesApi.listGrants).toHaveBeenCalledWith(createdSource));
     await waitFor(() =>
@@ -820,9 +915,9 @@ describe('DataSourcesPage', () => {
   });
 
   it('does not warn for an unchanged existing source but protects edits when selecting another', async () => {
-    vi.spyOn(dataSourcesApi, 'list').mockResolvedValue({
-      dataSources: [createdSource, otherSource],
-    });
+    vi.spyOn(dataSourcesApi, 'catalog').mockResolvedValue(
+      catalogResult([createdSource, otherSource]),
+    );
     vi.spyOn(dataSourcesApi, 'listGrants').mockResolvedValue({ grants: [] });
     vi.spyOn(usersApi, 'list').mockResolvedValue({ users: [] });
     render(

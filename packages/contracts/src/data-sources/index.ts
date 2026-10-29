@@ -247,6 +247,30 @@ export const dataSourceListResponseSchema = z
   .object({ dataSources: z.array(dataSourceSummarySchema) })
   .strict();
 
+export const dataSourceCatalogQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).max(1_000_000).default(1),
+    pageSize: z.coerce
+      .number()
+      .pipe(z.union([z.literal(10), z.literal(20), z.literal(50)]))
+      .default(10),
+    q: z.string().trim().max(200).default(''),
+    type: dataSourceTypeSchema.optional(),
+  })
+  .strict();
+
+export const dataSourceCatalogResponseSchema = z
+  .object({
+    dataSources: z.array(dataSourceSummarySchema),
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    pageSize: z.union([z.literal(10), z.literal(20), z.literal(50)]),
+  })
+  .strict();
+
+export type DataSourceCatalogQuery = z.infer<typeof dataSourceCatalogQuerySchema>;
+export type DataSourceCatalogResponse = z.infer<typeof dataSourceCatalogResponseSchema>;
+
 export const dataSourceGrantSchema = z
   .object({
     dataSourceId: z.uuid(),

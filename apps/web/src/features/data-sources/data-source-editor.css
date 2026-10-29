@@ -1,3 +1,23 @@
+.data-source-catalog-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.data-source-catalog-toolbar > .ant-input-affix-wrapper {
+  width: min(100%, 340px);
+}
+.data-source-catalog-toolbar > .ant-select {
+  width: 160px;
+}
+.data-source-catalog-toolbar > .ant-btn {
+  margin-left: auto;
+}
+.data-source-catalog-card {
+  min-width: 0;
+}
+
 .data-sources-page.is-editing,
 .data-source-editor {
   height: 100%;

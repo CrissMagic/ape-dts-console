@@ -13,6 +13,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   ServiceUnavailableException,
   UseGuards,
@@ -22,6 +23,7 @@ import {
   createKafkaTopicRequestSchema,
   createDataSourceRequestSchema,
   copyDataSourceRequestSchema,
+  dataSourceCatalogQuerySchema,
   dataSourceGrantParametersSchema,
   dataSourceIdentifierParametersSchema,
   deleteDataSourceRequestSchema,
@@ -128,6 +130,19 @@ export class DataSourcesController {
   async list(@Req() request: AuthenticatedFastifyRequest) {
     try {
       return { dataSources: await this.dataSources.list(requireAuthContext(request).user) };
+    } catch (error) {
+      mapDataSourcesError(error);
+    }
+  }
+
+  @Get('catalog')
+  @UseGuards(SessionAuthGuard)
+  async catalog(@Query() query: unknown, @Req() request: AuthenticatedFastifyRequest) {
+    try {
+      return await this.dataSources.catalog(
+        requireAuthContext(request).user,
+        parse(dataSourceCatalogQuerySchema, query),
+      );
     } catch (error) {
       mapDataSourcesError(error);
     }

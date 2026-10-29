@@ -33,6 +33,8 @@ import {
   dataSourceGrantListResponseSchema,
   dataSourceGrantSchema,
   dataSourceListResponseSchema,
+  dataSourceCatalogResponseSchema,
+  type DataSourceCatalogQuery,
   dataSourceSummarySchema,
   loginResponseSchema,
   metadataResponseSchema,
@@ -548,6 +550,18 @@ export const dataSourcesApi = {
   },
   list() {
     return request('/data-sources', dataSourceListResponseSchema);
+  },
+
+  catalog(query: DataSourceCatalogQuery) {
+    const parameters = new URLSearchParams({
+      page: String(query.page),
+      pageSize: String(query.pageSize),
+      q: query.q,
+    });
+    if (query.type !== undefined) parameters.set('type', query.type);
+    return request(`/data-sources/catalog?${parameters}`, dataSourceCatalogResponseSchema, {
+      signal: AbortSignal.timeout(10_000),
+    });
   },
 
   create(body: CreateDataSourceRequest) {

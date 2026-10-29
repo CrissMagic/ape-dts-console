@@ -12,6 +12,8 @@ import {
   type CreateDataSourceRequest,
   type CopyDataSourceRequest,
   type DataSourceConfiguration,
+  type DataSourceCatalogQuery,
+  type DataSourceCatalogResponse,
   type DataSourceGrant,
   type DataSourceIdentity,
   type DataSourceSummary,
@@ -512,6 +514,50 @@ export class DataSourcesService {
       [actor.id],
     );
     return result.rows.map(dataSourceSummary);
+  }
+
+  async catalog(
+    actor: UserSummary,
+    query: DataSourceCatalogQuery,
+  ): Promise<DataSourceCatalogResponse> {
+    // One statement keeps totals, page bounds and rows on the same authorization snapshot.
+    const result = await this.database
+      .requirePool()
+      .query<(DataSourceRow | { id: null }) & { total: string; current_page: number }>(
+        `WITH filtered AS (
+         SELECT ${JOINED_DATA_SOURCE_COLUMNS}
+         FROM ape_dts_platform.data_sources AS sources
+         WHERE sources.state = 'ACTIVE' AND sources.deleted_at IS NULL
+           AND ($2::boolean OR EXISTS (
+             SELECT 1 FROM ape_dts_platform.data_source_grants AS grants
+             WHERE grants.data_source_id = sources.id AND grants.user_id = $1::uuid
+               AND grants.revoked_at IS NULL
+           ))
+           AND ($4::text IS NULL OR sources.source_type = $4::text)
+           AND ($3::text = '' OR strpos(lower(concat_ws(' ',
+             sources.normalized_name, sources.configuration->>'host',
+             sources.configuration->>'database', sources.configuration->>'port',
+             (sources.configuration->'bootstrapServers')::text
+           )), lower($3::text)) > 0)
+       ), totals AS (SELECT count(*) AS total FROM filtered), bounds AS (
+         SELECT total, least($5::int, greatest(1, ceil(total::numeric / $6::int)::int)) AS current_page
+         FROM totals
+       )
+       SELECT bounds.total::text, bounds.current_page, entries.*
+       FROM bounds LEFT JOIN LATERAL (
+         SELECT * FROM filtered ORDER BY normalized_name, id
+         LIMIT $6::int OFFSET (bounds.current_page - 1) * $6::int
+       ) AS entries ON true
+       ORDER BY entries.normalized_name, entries.id`,
+        [actor.id, actor.role === 'ADMIN', query.q, query.type ?? null, query.page, query.pageSize],
+      );
+    const bounds = result.rows[0]!;
+    return {
+      dataSources: result.rows.flatMap((row) => (row.id === null ? [] : [dataSourceSummary(row)])),
+      total: Number(bounds.total),
+      page: bounds.current_page,
+      pageSize: query.pageSize,
+    };
   }
 
   async get(

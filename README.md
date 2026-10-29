@@ -15,7 +15,7 @@
 | Kafka → Kafka Raw  | 持续转发               | 多 Topic 映射、分区运行单元与 Consumer Group 进度        |
 
 - 多行来源映射，每行可选择多个目标 Topic；任务卡片、共享分组和拖拽归组。
-- 数据源连接测试、复制与删除；管理员和开发者权限、数据源授权及审计。
+- 数据源分页、地址与名称搜索、类型筛选、连接测试、复制与删除；管理员和开发者权限、数据源授权及审计。
 - 上传和选择运行制品；实际链路能力取决于所用 ape-dts 制品。
 - 运行日志级别筛选与实时读取、历史运行与最长 7 天指标、PG 复制槽和 Kafka 积压监控。
 - 企业微信机器人告警、可配置自动恢复、配置导入导出（不导出密码）。
@@ -30,7 +30,7 @@ Doris 目前支持数据源登记和元数据读取，尚未接入任务写入�
 ```sh
 git clone https://github.com/CrissMagic/ape-dts-console.git
 cd ape-dts-console
-docker build -t ape-dts-console:1.0.0 .
+docker build -t ape-dts-console:local .
 
 sudo install -d -o 10001 -g 10001 -m 0700 \
   /srv/ape-dts-console/storage /srv/ape-dts-console/artifact-cache
@@ -42,10 +42,11 @@ docker run -d --name ape-dts-console \
   --cpus 4 --memory 8g \
   --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 \
   --env-file ./platform.env \
+  --env SCS_PLATFORM_VERSION="$(git rev-parse --short HEAD)" \
   -p 127.0.0.1:18088:3000 \
   --mount type=bind,src=/srv/ape-dts-console/storage,dst=/data/storage \
   --mount type=bind,src=/srv/ape-dts-console/artifact-cache,dst=/var/cache/ape-dts-platform/artifacts \
-  ape-dts-console:1.0.0
+  ape-dts-console:local
 ```
 
 打开 `http://127.0.0.1:18088/`。首次初始化成功后，容器日志输出固定管理员 `admin` 的随机临时密码，首次登录必须修改。通过受控方式查看 `docker logs ape-dts-console`，不要公开包含临时密码的日志。

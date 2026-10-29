@@ -7,6 +7,7 @@ import type {
   ConnectionTestResponse,
   CreateDataSourceRequest,
   DataSourceConfiguration,
+  DataSourceCatalogQuery,
   DataSourceGrant,
   DataSourceSummary,
   DataSourceType,
@@ -266,7 +267,15 @@ export function DataSourcesPage({
   const administrator = session.user.role === 'ADMIN';
   const [dataSources, setDataSources] = useState<readonly DataSourceSummary[]>([]);
   const [draft, setDraft] = useState<SourceDraft>(emptyDraft);
-  const [selectedDataSourceId, setSelectedDataSourceId] = useState<string | null>(null);
+  const [selectedDataSource, setSelectedDataSource] = useState<DataSourceSummary | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState<DataSourceCatalogQuery>({
+    page: 1,
+    pageSize: 10,
+    q: '',
+  });
+  const [catalogTotal, setCatalogTotal] = useState(0);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const catalogRequest = useRef(0);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorSection, setEditorSection] = useState('connection');
   const [grants, setGrants] = useState<readonly DataSourceGrant[]>([]);
@@ -302,8 +311,6 @@ export function DataSourcesPage({
     setMysqlInspectionBusy(false);
   }, []);
 
-  const selectedDataSource =
-    dataSources.find((source) => source.id === selectedDataSourceId) ?? null;
   const baseline =
     selectedDataSource === null ? emptyDraft() : draftFromDataSource(selectedDataSource);
   const dirty = editorOpen && administrator && JSON.stringify(draft) !== JSON.stringify(baseline);
@@ -336,15 +343,20 @@ export function DataSourcesPage({
   );
 
   const loadDataSources = useCallback(async () => {
-    const result = await dataSourcesApi.list();
-    setDataSources(result.dataSources);
-    setSelectedDataSourceId((current) =>
-      current !== null && result.dataSources.some((source) => source.id === current)
-        ? current
-        : null,
-    );
-    return result.dataSources;
-  }, []);
+    const requestId = ++catalogRequest.current;
+    setCatalogLoading(true);
+    try {
+      const result = await dataSourcesApi.catalog(catalogQuery);
+      if (requestId !== catalogRequest.current) return;
+      setDataSources(result.dataSources);
+      setCatalogTotal(result.total);
+      setCatalogQuery((current) =>
+        current.page === result.page ? current : { ...current, page: result.page },
+      );
+    } finally {
+      if (requestId === catalogRequest.current) setCatalogLoading(false);
+    }
+  }, [catalogQuery]);
 
   const loadGrants = useCallback(async (dataSource: DataSourceSummary) => {
     const result = await dataSourcesApi.listGrants(dataSource);
@@ -385,13 +397,26 @@ export function DataSourcesPage({
 
   useEffect(() => {
     run(async () => {
-      await loadDataSources();
       if (administrator) {
         const result = await usersApi.list();
         setUsers(result.users);
       }
     }, '读取数据源失败');
-  }, [administrator, loadDataSources, run]);
+  }, [administrator, run]);
+
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(() => {
+      void loadDataSources().catch((caught: unknown) => {
+        if (active) reportFailure('读取数据源失败', caught);
+      });
+    }, 200);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      catalogRequest.current += 1;
+    };
+  }, [loadDataSources, reportFailure]);
 
   useEffect(() => {
     setGrants([]);
@@ -419,7 +444,7 @@ export function DataSourcesPage({
 
   function selectDataSource(dataSource: DataSourceSummary) {
     setEditorSection('connection');
-    setSelectedDataSourceId(dataSource.id);
+    setSelectedDataSource(dataSource);
     setDraft(draftFromDataSource(dataSource));
     resetConnectionTest();
     invalidateMysqlInspection();
@@ -430,7 +455,7 @@ export function DataSourcesPage({
   function beginCreate() {
     setEditorSection('connection');
     invalidateMysqlInspection();
-    setSelectedDataSourceId(null);
+    setSelectedDataSource(null);
     setDraft(emptyDraft());
     resetConnectionTest();
     setPendingAction(null);
@@ -442,7 +467,7 @@ export function DataSourcesPage({
     requestLeave(() => {
       invalidateMysqlInspection();
       setEditorOpen(false);
-      setSelectedDataSourceId(null);
+      setSelectedDataSource(null);
       setDraft(emptyDraft());
       resetConnectionTest();
       setError(null);
@@ -527,7 +552,7 @@ export function DataSourcesPage({
         case 'CREATE': {
           const created = await dataSourcesApi.create(pendingAction.request);
           await loadDataSources();
-          setSelectedDataSourceId(created.id);
+          setSelectedDataSource(created);
           setDraft(draftFromDataSource(created));
           notify('success', '数据源已创建，可继续测试连接。');
           break;
@@ -538,7 +563,7 @@ export function DataSourcesPage({
             pendingAction.request,
           );
           await loadDataSources();
-          setSelectedDataSourceId(updated.id);
+          setSelectedDataSource(updated);
           setDraft(draftFromDataSource(updated));
           setTestResult(null);
           notify('success', '数据源配置已保存，请重新测试连接。');
@@ -548,7 +573,7 @@ export function DataSourcesPage({
           await dataSourcesApi.remove(pendingAction.dataSource);
           await loadDataSources();
           setEditorOpen(false);
-          setSelectedDataSourceId(null);
+          setSelectedDataSource(null);
           setDraft(emptyDraft());
           setTestResult(null);
           break;
@@ -654,7 +679,33 @@ export function DataSourcesPage({
     >
       {!editorOpen && (
         <>
-          <div className="content-heading justify-end">
+          <div className="data-source-catalog-toolbar">
+            <Input
+              aria-label="搜索数据源"
+              placeholder="搜索名称、地址或数据库…"
+              value={catalogQuery.q}
+              maxLength={200}
+              allowClear
+              onChange={(event) => {
+                catalogRequest.current += 1;
+                setCatalogQuery((current) => ({ ...current, q: event.target.value, page: 1 }));
+              }}
+            />
+            <Select<DataSourceType | undefined>
+              aria-label="数据源类型筛选"
+              placeholder="全部类型"
+              allowClear
+              value={catalogQuery.type}
+              options={(['POSTGRES', 'MYSQL', 'KAFKA', 'DORIS'] as const).map((type) => ({
+                value: type,
+                label: typeLabel(type),
+              }))}
+              onChange={(type) => {
+                catalogRequest.current += 1;
+                setCatalogQuery((current) => ({ ...current, type, page: 1 }));
+              }}
+            />
+            <span className="text-sm text-muted-foreground">{catalogTotal} 个数据源</span>
             {administrator && (
               <Button type="primary" disabled={busy} onClick={() => requestLeave(beginCreate)}>
                 新建数据源
@@ -662,9 +713,10 @@ export function DataSourcesPage({
             )}
           </div>
 
-          <Card>
+          <Card className="data-source-catalog-card">
             <Table<DataSourceSummary>
               aria-label="数据源列表"
+              loading={catalogLoading}
               columns={[
                 {
                   key: 'name',
@@ -744,13 +796,30 @@ export function DataSourcesPage({
               ]}
               dataSource={[...dataSources]}
               locale={{
-                emptyText: administrator
-                  ? '当前尚未登记数据源。'
-                  : '管理员尚未向你授予可用数据源。',
+                emptyText:
+                  catalogQuery.q.trim() !== '' || catalogQuery.type !== undefined
+                    ? '没有匹配的数据源'
+                    : administrator
+                      ? '当前尚未登记数据源。'
+                      : '管理员尚未向你授予可用数据源。',
               }}
-              pagination={false}
+              pagination={{
+                current: catalogQuery.page,
+                pageSize: catalogQuery.pageSize,
+                total: catalogTotal,
+                pageSizeOptions: [10, 20, 50],
+                showSizeChanger: { 'aria-label': '数据源每页条数' },
+                onChange: (page, pageSize) => {
+                  catalogRequest.current += 1;
+                  setCatalogQuery((current) => ({
+                    ...current,
+                    page: pageSize === current.pageSize ? page : 1,
+                    pageSize: pageSize as 10 | 20 | 50,
+                  }));
+                },
+              }}
               rowKey="id"
-              scroll={{ x: 850 }}
+              scroll={{ x: 850, y: 'max(160px, calc(100dvh - 320px))' }}
             />
           </Card>
         </>
