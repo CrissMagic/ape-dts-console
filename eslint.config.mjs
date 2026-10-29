@@ -12,6 +12,8 @@ export default tseslint.config(
       '**/coverage/**',
       '**/dist/**',
       '**/node_modules/**',
+      '**/output/**',
+      '**/node_modules.incomplete*/**',
       'pnpm-lock.yaml',
     ],
   },
