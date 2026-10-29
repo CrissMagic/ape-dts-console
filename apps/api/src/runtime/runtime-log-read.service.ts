@@ -570,11 +570,21 @@ export class RuntimeLogReadService {
   }
 }
 
+const serializedLogFacts = new WeakMap<RuntimeLogFact, string>();
+function serializedLogFact(fact: RuntimeLogFact): string {
+  let serialized = serializedLogFacts.get(fact);
+  if (serialized === undefined) {
+    serialized = JSON.stringify(fact);
+    serializedLogFacts.set(fact, serialized);
+  }
+  return serialized;
+}
+
 function compareLogFacts(first: RuntimeLogFact, second: RuntimeLogFact): number {
   return (
     first.occurredAt.localeCompare(second.occurredAt) ||
     first.kind.localeCompare(second.kind) ||
-    JSON.stringify(first).localeCompare(JSON.stringify(second))
+    serializedLogFact(first).localeCompare(serializedLogFact(second))
   );
 }
 

@@ -298,8 +298,9 @@ export class ArtifactFiles {
     let hasCli = false;
     let fileName = '';
     const binary = path.join(temporary, 'ape-dts');
+    const entryTasks: Promise<void>[] = [];
     extract.on('entry', (header, stream, next) => {
-      void (async () => {
+      const task = (async () => {
         if (++count > 10000) fail('ARTIFACT_ARCHIVE_LIMIT');
         const normalized = header.name.replace(/^(\.\/)+/u, '');
         if (header.type === 'directory' && (normalized === '' || normalized === '.')) {
@@ -336,7 +337,9 @@ export class ArtifactFiles {
           }
         }
         next();
-      })().catch((error: Error) => extract.destroy(error));
+      })();
+      entryTasks.push(task);
+      void task.catch((error: Error) => extract.destroy(error));
     });
     if (format === 'TAR_GZ') {
       const timer = setTimeout(
@@ -349,6 +352,8 @@ export class ArtifactFiles {
         });
       } finally {
         clearTimeout(timer);
+        extract.destroy();
+        await Promise.allSettled(entryTasks);
       }
     } else {
       const child = spawn(
@@ -367,15 +372,15 @@ export class ArtifactFiles {
         child.kill();
         extract.destroy(new ArtifactFileError('ARTIFACT_ARCHIVE_TIMEOUT'));
       }, 60000);
+      const reading = pipeline(child.stdout, limiter(MAX_EXPANDED), extract, { signal });
       try {
-        await Promise.all([
-          completion,
-          pipeline(child.stdout, limiter(MAX_EXPANDED), extract, { signal }),
-        ]);
+        await Promise.all([completion, reading]);
       } finally {
         clearTimeout(timer);
         child.kill();
-        await completion.catch(() => undefined);
+        extract.destroy();
+        await Promise.allSettled([completion, reading]);
+        await Promise.allSettled(entryTasks);
       }
     }
     if (candidates !== 1)
