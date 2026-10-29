@@ -1,0 +1,13 @@
+Ape DTS Console
+Copyright 2026 CrissMagic and contributors
+
+This is an independent community project and is not an official ApeCloud product.
+Original platform code is licensed under Apache-2.0.
+
+The web application includes adapted shadcn-admin components and styles:
+Copyright (c) 2024 Sat Naing, licensed under MIT.
+See apps/web/third-party/shadcn-admin-LICENSE.
+
+The ape-dts engine is a separate AGPL-3.0 program uploaded by operators.
+It is not included in this source tree or the default platform image.
+Its license and the licenses of other dependencies are not replaced by this NOTICE.

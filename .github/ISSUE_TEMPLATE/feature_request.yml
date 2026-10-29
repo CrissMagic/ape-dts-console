@@ -1,0 +1,20 @@
+name: 功能建议 / Feature request
+description: 描述使用场景与验收结果 / Describe the use case and acceptance criteria
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用场景与问题 / Use case and problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望行为 / Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准与影响 / Acceptance criteria and impact

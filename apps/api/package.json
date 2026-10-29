@@ -1,0 +1,49 @@
+{
+  "name": "@scs/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fastify/static": "catalog:",
+    "@nestjs/common": "catalog:",
+    "@nestjs/core": "catalog:",
+    "@nestjs/platform-fastify": "catalog:",
+    "@scs/artifact-probe": "workspace:*",
+    "@scs/config-model": "workspace:*",
+    "@scs/contracts": "workspace:*",
+    "@scs/database": "workspace:*",
+    "@scs/observability": "workspace:*",
+    "@scs/security": "workspace:*",
+    "@scs/storage": "workspace:*",
+    "fastify": "catalog:",
+    "kafkajs": "catalog:",
+    "mysql2": "catalog:",
+    "pg": "catalog:",
+    "reflect-metadata": "catalog:",
+    "rxjs": "catalog:",
+    "tar-stream": "3.2.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "catalog:",
+    "@nestjs/testing": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "@types/tar-stream": "3.1.4",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

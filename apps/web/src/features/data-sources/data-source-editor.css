@@ -1,0 +1,308 @@
+.data-sources-page.is-editing,
+.data-source-editor {
+  height: 100%;
+  min-height: 0;
+}
+.data-source-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.data-source-editor-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.data-source-editor-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.data-source-editor-title h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.data-source-editor-title .ant-tag,
+.data-source-editor-title .ant-tag > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.data-source-context {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.data-source-editor-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 164px minmax(0, 760px);
+  gap: 32px;
+}
+.data-source-editor-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.data-source-editor-nav > button {
+  justify-content: flex-start;
+  font-weight: 400;
+}
+.data-source-editor-nav > .is-active {
+  background: var(--muted);
+  font-weight: 500;
+}
+.data-source-editor-nav > p {
+  margin-top: 12px;
+  padding-inline: 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.data-source-editor-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 12px;
+  scrollbar-gutter: stable;
+}
+.data-source-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.data-source-form fieldset {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.data-source-form legend {
+  width: 100%;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 600;
+}
+.data-source-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.data-source-fields > :only-child,
+.data-source-fields > .full-width {
+  grid-column: 1 / -1;
+}
+.data-source-fields label,
+.data-source-password {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+.data-source-fields .ant-input,
+.data-source-fields .ant-input-affix-wrapper,
+.data-source-fields select,
+.data-source-fields textarea {
+  font-size: 14px;
+  font-weight: 400;
+}
+.data-source-fields select,
+.data-source-fields textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--input);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+}
+.data-source-fields select:focus-visible,
+.data-source-fields textarea:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.data-source-fields .ant-input-affix-wrapper > input {
+  padding: 0;
+  border: 0;
+}
+.data-source-fields .ant-input,
+.data-source-fields .ant-input-affix-wrapper {
+  min-height: 36px;
+}
+.data-source-fields .ant-input-affix-wrapper > input {
+  min-height: auto;
+}
+.data-source-host-port {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(100px, 1fr);
+  gap: 16px;
+}
+.data-source-saved-password,
+.data-source-password-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.data-source-saved-password > span,
+.data-source-password-input > .ant-input-affix-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+.data-source-saved-password > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding-inline: 12px;
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.data-source-form .checkbox-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.data-source-connection-test,
+.data-source-mysql-check {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.data-source-test-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.data-source-connection-test > .ant-alert {
+  margin-top: 12px;
+}
+.data-source-test-action {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+.data-source-test-action > [role='status'] {
+  display: inline-flex;
+}
+.data-source-editor-footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  margin-left: 196px;
+  border-top: 1px solid var(--border);
+}
+.data-source-save-state {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.data-source-grant-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.data-source-grant-controls > .ant-select {
+  flex: 1;
+  min-width: 0;
+}
+.data-source-grant-controls > .ant-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+@media (min-width: 1024px) and (max-height: 900px) {
+  .data-source-editor {
+    gap: 16px;
+  }
+  .data-source-form {
+    gap: 16px;
+  }
+  .data-source-form legend {
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+  .data-source-fields {
+    gap: 12px 16px;
+  }
+  .data-source-fields label:not(.checkbox-label),
+  .data-source-password {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .data-source-fields label > span:first-child,
+  .data-source-password > span {
+    flex-shrink: 0;
+  }
+  .data-source-fields label > .ant-input,
+  .data-source-fields label > .ant-input-affix-wrapper,
+  .data-source-fields label > select,
+  .data-source-fields label > textarea,
+  .data-source-saved-password,
+  .data-source-password-input {
+    flex: 1;
+    min-width: 0;
+  }
+  .data-source-form .data-source-tls {
+    grid-column: 1 / -1;
+    max-width: 520px;
+  }
+  .data-source-connection-test,
+  .data-source-mysql-check {
+    margin-top: 16px;
+    padding-top: 12px;
+  }
+}
+@media (max-width: 1023px) {
+  .data-source-editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 16px;
+  }
+  .data-source-editor-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .data-source-editor-nav > p {
+    width: 100%;
+    margin: 0;
+  }
+  .data-source-editor-footer {
+    margin-left: 0;
+  }
+}
+@media (max-width: 639px) {
+  .data-source-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .data-source-editor {
+    gap: 16px;
+  }
+  .data-source-editor-title h2 {
+    font-size: 20px;
+  }
+  .data-source-editor-footer {
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,35 @@
+name: 问题反馈 / Bug report
+description: 报告可复现的问题，请先脱敏 / Report a reproducible issue without secrets
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 安全漏洞请私下报告；不要上传密码、完整连接配置或未脱敏日志。 / Report vulnerabilities privately. Never attach secrets.
+  - type: input
+    id: version
+    attributes:
+      label: 平台与引擎版本 / Platform and engine version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期与实际结果 / Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 部署环境 / Environment
+      description: Docker/Rancher、架构、数据库版本，勿填写真实地址和凭据。
+  - type: textarea
+    id: logs
+    attributes:
+      label: 脱敏日志 / Redacted logs
+      render: text

@@ -1,0 +1,15 @@
+.git
+.runtime
+coverage
+node_modules
+**/node_modules
+**/dist
+*.log
+output
+.context
+.playwright-cli
+.pnpm-store
+node_modules.incomplete*
+.env
+.env.*
+platform.env

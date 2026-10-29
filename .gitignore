@@ -1,0 +1,18 @@
+.env
+.env.*
+!.env.example
+.pnpm-store/
+.context/
+.playwright-cli/
+coverage/
+dist/
+node_modules/
+*.log
+
+# Runtime data must be mounted outside the source tree.
+.runtime/
+
+# Local deployment secrets and generated investigation artifacts.
+platform.env
+output/
+node_modules.incomplete*/

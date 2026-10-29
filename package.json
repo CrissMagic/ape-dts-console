@@ -1,0 +1,51 @@
+{
+  "type": "module",
+  "name": "scs-data-sync-platform",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.4",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=10.12.4 <11"
+  },
+  "scripts": {
+    "build": "pnpm build:packages && pnpm --filter @scs/api build && pnpm --filter @scs/web build",
+    "build:contracts": "pnpm --filter @scs/contracts build",
+    "build:packages": "pnpm --filter @scs/contracts build && pnpm --filter @scs/security build && pnpm --filter @scs/database build && pnpm --filter @scs/storage build && pnpm --filter @scs/observability build && pnpm --filter @scs/config-model build && pnpm --filter @scs/artifact-probe build",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "dev": "pnpm --parallel --filter @scs/api --filter @scs/web run dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "pnpm build:packages && pnpm -r --if-present run test",
+    "test:coverage": "pnpm build:packages && pnpm -r --if-present run test:coverage",
+    "test:integration:docker": "vitest run --config vitest.integration.config.ts tests/integration/docker-smoke.integration.spec.ts",
+    "test:integration:phase0": "vitest run --config vitest.integration.config.ts --no-file-parallelism tests/integration/phase0 tests/integration/data-sources/kafka-data-source.adapter.integration.spec.ts",
+    "test:integration:bootstrap-api": "vitest run --config vitest.integration.config.ts tests/integration/bootstrap/bootstrap-api.integration.spec.ts",
+    "test:integration:artifacts": "vitest run --config vitest.integration.config.ts tests/integration/artifacts/artifact-probe.integration.spec.ts",
+    "test:integration:auth": "vitest run --config vitest.integration.config.ts --no-file-parallelism tests/integration/auth",
+    "test:integration:data-sources": "vitest run --config vitest.integration.config.ts --no-file-parallelism tests/integration/data-sources",
+    "test:integration:postgres": "vitest run --config vitest.integration.config.ts tests/integration/bootstrap/bootstrap-postgres.integration.spec.ts",
+    "test:integration:runtime": "vitest run --config vitest.integration.config.ts --no-file-parallelism tests/integration/runtime/runtime-supervisor.integration.spec.ts",
+    "typecheck": "pnpm build:packages && pnpm -r --if-present run typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@nestjs/platform-fastify": "catalog:",
+    "@nestjs/testing": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "eslint-plugin-react-refresh": "catalog:",
+    "fastify": "catalog:",
+    "globals": "catalog:",
+    "kafkajs": "catalog:",
+    "pg": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "Apache-2.0"
+}

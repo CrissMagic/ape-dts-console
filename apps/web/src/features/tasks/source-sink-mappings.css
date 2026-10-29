@@ -1,0 +1,27 @@
+.task-mappings {
+  min-width: 0;
+}
+.task-mappings .ant-table-cell {
+  vertical-align: top;
+}
+.task-mappings .ant-select-selector {
+  min-height: 36px;
+}
+.task-mapping-source-input {
+  min-width: 0;
+}
+.task-mapping-source-input input {
+  min-width: 0;
+}
+.task-mapping-topic-policy {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(200px, 1.4fr) minmax(250px, 1.5fr);
+  align-items: center;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .task-mapping-topic-policy {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}

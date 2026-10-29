@@ -1,0 +1,908 @@
+{
+  "schema": "ape_dts_platform",
+  "migrations": [
+    {
+      "version": 1,
+      "filename": "000001_platform_core.sql",
+      "checksum": "3d7273010ea48000906faafaa0907927c28303564e25091cb469bffce1a875d6",
+      "platformVersion": "0.1.0",
+      "description": "Create migration ledger, platform instance, recovery, key, initial user and audit core tables",
+      "sentinels": [
+        {
+          "table": "schema_migrations",
+          "columns": ["version", "checksum", "platform_version", "applied_by_instance_id"]
+        },
+        {
+          "table": "platform_instances",
+          "columns": ["id", "platform_version", "current_recovery_session_id"]
+        },
+        {
+          "table": "recovery_sessions",
+          "columns": ["id", "platform_instance_id", "state"]
+        },
+        {
+          "table": "recovery_steps",
+          "columns": ["id", "recovery_session_id", "step_type", "status"]
+        },
+        {
+          "table": "key_wrappers",
+          "columns": ["id", "wrapper_type", "version", "ciphertext", "active"]
+        },
+        {
+          "table": "secrets",
+          "columns": ["id", "owner_type", "owner_id", "purpose", "ciphertext"]
+        },
+        {
+          "table": "users",
+          "columns": ["id", "normalized_username", "role", "status", "totp_secret_id"]
+        },
+        {
+          "table": "platform_settings",
+          "columns": ["singleton_id", "max_runtime_units", "row_version"]
+        },
+        {
+          "table": "audit_events",
+          "columns": ["sequence", "event_id", "event_hash"]
+        }
+      ]
+    },
+    {
+      "version": 2,
+      "filename": "000002_storage_artifacts.sql",
+      "checksum": "4f1984e759b0fd9bf8f3c08232913669d0eca5118e17d1dd478320f27b3aab1d",
+      "platformVersion": "0.1.0",
+      "description": "Create immutable storage profile, stored object, artifact probe, capability, certification and signature evidence tables",
+      "sentinels": [
+        {
+          "table": "storage_profiles",
+          "columns": ["id", "profile_key", "version", "driver", "config", "state"]
+        },
+        {
+          "table": "stored_objects",
+          "columns": ["id", "storage_profile_id", "kind", "object_key", "sha256", "state"]
+        },
+        {
+          "table": "artifacts",
+          "columns": ["id", "version_identifier", "stored_object_id", "actual_sha256", "state"]
+        },
+        {
+          "table": "artifact_probe_runs",
+          "columns": ["id", "artifact_id", "probe_kind", "probe_version", "status"]
+        },
+        {
+          "table": "artifact_capabilities",
+          "columns": ["artifact_id", "capability_name", "support_state", "evidence_version"]
+        },
+        {
+          "table": "artifact_certifications",
+          "columns": [
+            "id",
+            "artifact_id",
+            "platform_version",
+            "task_scenario",
+            "adapter_version",
+            "state"
+          ]
+        },
+        {
+          "table": "artifact_signature_checks",
+          "columns": ["id", "artifact_id", "policy_version", "status", "signer_id"]
+        }
+      ]
+    },
+    {
+      "version": 3,
+      "filename": "000003_identity_audit.sql",
+      "checksum": "0523e6fd4904735524c179b4ae6431860d895389534329164df2a3517404415c",
+      "platformVersion": "0.1.0",
+      "description": "Add user lifecycle protection, activation, TOTP recovery, server sessions, authentication rate limits and append-only audit chain constraints",
+      "sentinels": [
+        {
+          "table": "users",
+          "columns": [
+            "id",
+            "session_generation",
+            "last_accepted_totp_counter",
+            "credentials_updated_at"
+          ]
+        },
+        {
+          "table": "user_activation_tokens",
+          "columns": ["id", "user_id", "purpose", "token_hash", "expires_at", "consumed_at"]
+        },
+        {
+          "table": "user_recovery_code_batches",
+          "columns": ["id", "user_id", "state", "revoked_at"]
+        },
+        {
+          "table": "user_recovery_codes",
+          "columns": ["id", "batch_id", "ordinal", "code_salt", "code_hash", "used_at"]
+        },
+        {
+          "table": "authentication_challenges",
+          "columns": [
+            "id",
+            "user_id",
+            "challenge_type",
+            "token_hash",
+            "session_generation",
+            "expires_at"
+          ]
+        },
+        {
+          "table": "auth_sessions",
+          "columns": [
+            "id",
+            "user_id",
+            "token_hash",
+            "csrf_token_hash",
+            "session_generation",
+            "idle_expires_at",
+            "absolute_expires_at"
+          ]
+        },
+        {
+          "table": "authentication_rate_limits",
+          "columns": [
+            "account_fingerprint",
+            "source_fingerprint",
+            "factor",
+            "failure_count",
+            "blocked_until"
+          ]
+        },
+        {
+          "table": "audit_chain_checkpoints",
+          "columns": ["first_retained_sequence", "last_deleted_sequence", "last_deleted_event_hash"]
+        }
+      ]
+    },
+    {
+      "version": 4,
+      "filename": "000004_data_sources.sql",
+      "checksum": "1b2687f1eec969de182a605b199cf5069f1a6223940ce4330a81281501b696ca",
+      "platformVersion": "0.1.0",
+      "description": "Create data sources, USE grants, current connection-test evidence and stable identity observations",
+      "sentinels": [
+        {
+          "table": "data_sources",
+          "columns": [
+            "id",
+            "normalized_name",
+            "source_type",
+            "configuration",
+            "connection_secret_id",
+            "state",
+            "row_version"
+          ]
+        },
+        {
+          "table": "data_source_grants",
+          "columns": ["id", "data_source_id", "user_id", "granted_by_user_id", "revoked_at"]
+        },
+        {
+          "table": "connection_test_runs",
+          "columns": ["id", "data_source_id", "purpose", "state", "duration_ms", "error_code"]
+        },
+        {
+          "table": "data_source_identity_observations",
+          "columns": [
+            "id",
+            "data_source_id",
+            "connection_test_run_id",
+            "identity_kind",
+            "identity_value"
+          ]
+        }
+      ]
+    },
+    {
+      "version": 5,
+      "filename": "000005_tasks_revisions_resources.sql",
+      "checksum": "b36f1b3ce53bc6894c0201d8450e2e4624965f0c1a175c095b445796c5271d81",
+      "platformVersion": "0.1.0",
+      "description": "Create task drafts, immutable revisions, preflight records, external resources and capacity reservations",
+      "sentinels": [
+        {
+          "table": "tasks",
+          "columns": [
+            "id",
+            "task_type",
+            "display_name",
+            "source_data_source_id",
+            "target_data_source_id",
+            "desired_state",
+            "observed_state",
+            "current_draft_revision_id",
+            "row_version"
+          ]
+        },
+        {
+          "table": "task_revisions",
+          "columns": [
+            "id",
+            "task_id",
+            "revision_number",
+            "state",
+            "configuration_schema_version",
+            "configuration",
+            "draft_version"
+          ]
+        },
+        {
+          "table": "pg_kafka_revision_configs",
+          "columns": [
+            "task_revision_id",
+            "source_database",
+            "source_schema",
+            "source_table",
+            "resource_mode",
+            "slot_name",
+            "publication_name",
+            "include_snapshot"
+          ]
+        },
+        {
+          "table": "kafka_kafka_revision_configs",
+          "columns": [
+            "task_revision_id",
+            "source_topic",
+            "target_topic",
+            "group_id",
+            "required_acks"
+          ]
+        },
+        {
+          "table": "risk_acceptances",
+          "columns": ["id", "task_revision_id", "accepted_by_user_id", "accepted_at"]
+        },
+        {
+          "table": "preflight_runs",
+          "columns": ["id", "task_revision_id", "state", "result"]
+        },
+        {
+          "table": "external_resources",
+          "columns": [
+            "id",
+            "task_id",
+            "data_source_id",
+            "resource_type",
+            "ownership_mode",
+            "stable_identity",
+            "lifecycle_state",
+            "row_version"
+          ]
+        },
+        {
+          "table": "task_run_units",
+          "columns": ["id", "task_id", "unit_key", "status"]
+        },
+        {
+          "table": "task_operations",
+          "columns": ["id", "task_id", "action", "idempotency_key", "state"]
+        },
+        {
+          "table": "resource_cleanup_requests",
+          "columns": ["id", "task_id", "external_resource_id", "state"]
+        },
+        {
+          "table": "capacity_reservations",
+          "columns": ["id", "task_id", "task_revision_id", "unit_key", "state"]
+        }
+      ]
+    },
+    {
+      "version": 6,
+      "filename": "000006_operations_runs_logs.sql",
+      "checksum": "1dac9951e17b4c0a3bb27da56aba4100e76ad92362e209fa2afa1e86207129ca",
+      "platformVersion": "0.1.0",
+      "description": "Create logical runs, runtime stages, process metadata and log segment/gap records",
+      "sentinels": [
+        {
+          "table": "task_runs",
+          "columns": [
+            "id",
+            "task_id",
+            "task_revision_id",
+            "operation_id",
+            "status",
+            "current_stage",
+            "started_at",
+            "ended_at"
+          ]
+        },
+        {
+          "table": "task_run_stages",
+          "columns": [
+            "id",
+            "run_id",
+            "stage_order",
+            "stage_type",
+            "status",
+            "progress_completed",
+            "progress_total"
+          ]
+        },
+        {
+          "table": "task_run_units",
+          "columns": [
+            "id",
+            "run_id",
+            "unit_key",
+            "status",
+            "runtime_directory",
+            "ini_path",
+            "metrics_port",
+            "metrics_port_released_at",
+            "process_pid",
+            "exit_code",
+            "exit_signal"
+          ],
+          "indexes": ["task_run_units_one_active_metrics_port"]
+        },
+        {
+          "table": "log_segments",
+          "columns": ["id", "run_id", "run_unit_id", "stream", "sequence", "state", "byte_size"]
+        },
+        {
+          "table": "log_gaps",
+          "columns": ["id", "run_id", "run_unit_id", "reason", "lost_bytes", "occurred_at"]
+        }
+      ]
+    },
+    {
+      "version": 7,
+      "filename": "000007_runtime_integrity.sql",
+      "checksum": "50929c23b2af2adfdf07b7bb124ecb9a39ab713de1319ed7792b2699d227291c",
+      "platformVersion": "0.1.0",
+      "description": "Require run-bound runtime ownership and enforce task/revision/run composite associations",
+      "sentinels": [
+        {
+          "table": "task_runs",
+          "columns": ["id", "task_id", "task_revision_id"],
+          "constraints": [
+            "task_runs_id_task_key",
+            "task_runs_id_task_revision_key",
+            "task_runs_revision_task_fk",
+            "task_runs_operation_task_fk"
+          ]
+        },
+        {
+          "table": "task_operations",
+          "columns": ["id", "task_id", "run_id"],
+          "constraints": [
+            "task_operations_id_task_key",
+            "task_operations_target_revision_task_fk",
+            "task_operations_run_task_fk"
+          ]
+        },
+        {
+          "table": "task_run_units",
+          "columns": ["id", "task_id", "run_id", "status"],
+          "constraints": [
+            "task_run_units_id_run_key",
+            "task_run_units_run_required",
+            "task_run_units_run_task_fk"
+          ]
+        },
+        {
+          "table": "log_segments",
+          "columns": ["id", "run_id", "run_unit_id"],
+          "constraints": ["log_segments_unit_run_fk"]
+        },
+        {
+          "table": "log_gaps",
+          "columns": ["id", "run_id", "run_unit_id"],
+          "constraints": ["log_gaps_unit_run_fk"]
+        },
+        {
+          "table": "capacity_reservations",
+          "columns": ["id", "task_id", "task_revision_id", "run_id", "state"],
+          "constraints": [
+            "capacity_reservations_run_required",
+            "capacity_reservations_revision_task_fk",
+            "capacity_reservations_run_task_revision_fk"
+          ]
+        }
+      ]
+    },
+    {
+      "version": 8,
+      "filename": "000008_runtime_log_storage.sql",
+      "checksum": "273f92c7a34320c3a4f2e40998df3b41fc3ca3b6c3fbc3361ee2b1eba1e5353e",
+      "platformVersion": "0.1.0",
+      "description": "Bind runtime logs to one storage profile and distinguish system-created stored objects",
+      "sentinels": [
+        {
+          "table": "stored_objects",
+          "columns": ["id", "storage_profile_id", "created_by_actor_type", "created_by_user_id"],
+          "constraints": ["stored_objects_creator_consistency"]
+        },
+        {
+          "table": "task_runs",
+          "columns": ["id", "log_storage_profile_id"],
+          "constraints": ["task_runs_log_storage_profile_fk"]
+        },
+        {
+          "table": "log_segments",
+          "columns": ["id", "run_id", "run_unit_id", "stream", "sequence"],
+          "constraints": [
+            "log_segments_run_unit_stream_sequence_key",
+            "log_segments_deletion_identity_key"
+          ]
+        },
+        {
+          "table": "log_segment_deletion_requests",
+          "columns": [
+            "log_segment_id",
+            "run_id",
+            "stored_object_id",
+            "reason",
+            "requested_at",
+            "deleted_at",
+            "completed_at",
+            "last_error_code"
+          ],
+          "constraints": [
+            "log_segment_deletion_requests_pkey",
+            "log_segment_deletion_requests_segment_fk",
+            "log_segment_deletion_requests_completion"
+          ],
+          "indexes": ["log_segment_deletion_requests_pending_idx"]
+        }
+      ]
+    },
+    {
+      "version": 9,
+      "filename": "000009_runtime_log_state.sql",
+      "checksum": "c462be5ca7b0ce2058d900e1027a1139f25223f267ff1dde2b4b7607c87388d6",
+      "platformVersion": "0.1.0",
+      "description": "Persist runtime log storage degradation and pending recovery state without changing process outcomes",
+      "sentinels": [
+        {
+          "table": "task_runs",
+          "columns": ["id", "log_storage_state", "log_recovery_state"],
+          "constraints": ["task_runs_log_storage_state_check", "task_runs_log_recovery_state_check"]
+        }
+      ]
+    },
+    {
+      "version": 10,
+      "filename": "000010_log_segment_run_stream_sequence.sql",
+      "checksum": "472217876c5273cd464abbacbfb1247edf9357695be43fe27e8336720fde1579",
+      "platformVersion": "0.1.0",
+      "description": "Order log segments across runtime units with one sequence per run stream",
+      "sentinels": [
+        {
+          "table": "log_segments",
+          "columns": ["id", "run_id", "run_unit_id", "stream", "sequence", "created_at"],
+          "constraints": ["log_segments_run_stream_sequence_key"]
+        }
+      ]
+    },
+    {
+      "version": 11,
+      "filename": "000011_log_gap_stream_error.sql",
+      "checksum": "12979c7e75f638a0b1447363dcf2eaaf576e401d89895d3796416aa266542dbd",
+      "platformVersion": "0.1.0",
+      "description": "Persist runtime stream errors as log gaps with unknown loss metadata",
+      "sentinels": [
+        {
+          "table": "log_gaps",
+          "columns": [
+            "id",
+            "run_id",
+            "run_unit_id",
+            "reason",
+            "started_at",
+            "ended_at",
+            "lost_bytes",
+            "occurred_at",
+            "container_restart"
+          ],
+          "constraints": ["log_gaps_reason_check"]
+        }
+      ]
+    },
+    {
+      "version": 12,
+      "filename": "000012_metadata_outage_emergency.sql",
+      "checksum": "6cac0650da74c8a4c9d268319a445521ab4e6731dbecd33be94d019677df17f0",
+      "platformVersion": "0.1.0",
+      "description": "Persist metadata outage recovery, emergency runtime actions and explicit audit gaps",
+      "sentinels": [
+        {
+          "table": "metadata_outage_events",
+          "columns": [
+            "id",
+            "platform_instance_id",
+            "detected_at",
+            "recovered_at",
+            "audit_sequence"
+          ],
+          "constraints": ["metadata_outage_event_time_order"]
+        },
+        {
+          "table": "task_runs",
+          "columns": ["id", "process_binding_hash"],
+          "constraints": ["task_runs_process_binding_hash_check"]
+        },
+        {
+          "table": "emergency_runtime_events",
+          "columns": [
+            "event_id",
+            "platform_instance_id",
+            "task_id",
+            "run_id",
+            "revision_id",
+            "operation_id",
+            "action",
+            "actor_type",
+            "process_binding_hash",
+            "reconciliation_code",
+            "audit_sequence"
+          ],
+          "constraints": [
+            "emergency_runtime_event_actor",
+            "emergency_runtime_event_reason",
+            "emergency_runtime_event_run_fk",
+            "emergency_runtime_event_revision_fk",
+            "emergency_runtime_event_operation_fk"
+          ]
+        },
+        {
+          "table": "audit_gap_events",
+          "columns": [
+            "id",
+            "platform_instance_id",
+            "gap_kind",
+            "known_started_at",
+            "known_ended_at",
+            "omitted_event_count",
+            "external_evidence",
+            "audit_sequence"
+          ],
+          "constraints": ["audit_gap_event_time_order", "audit_gap_event_payload"],
+          "indexes": ["audit_gap_events_unclean_instance_idx"]
+        }
+      ]
+    },
+    {
+      "version": 13,
+      "filename": "000013_log_gap_legacy_format.sql",
+      "checksum": "b21bb0f14cdcda71033b62447240775fd32d85d604703f7364ad1377a03a2143",
+      "platformVersion": "0.1.0",
+      "description": "Record legacy plain log segments as explicit read gaps",
+      "sentinels": [
+        {
+          "table": "log_gaps",
+          "columns": ["id", "run_id", "reason"],
+          "constraints": ["log_gaps_reason_check"]
+        }
+      ]
+    },
+    {
+      "version": 14,
+      "filename": "000014_runtime_continuity.sql",
+      "checksum": "49d9141944469eeccd15c2b239658b437314733bf8a103b068e7c921c144997c",
+      "platformVersion": "0.1.0",
+      "description": "Persist task runtime continuity baselines, observations and manual acceptances",
+      "sentinels": [
+        {
+          "table": "task_continuity_baselines",
+          "columns": ["id", "task_id", "task_revision_id", "baseline_kind", "row_version"]
+        },
+        {
+          "table": "task_continuity_observations",
+          "columns": ["id", "task_id", "task_revision_id", "observation", "decision"]
+        },
+        {
+          "table": "task_continuity_acceptances",
+          "columns": ["id", "observation_id", "expected_baseline_row_version", "reason"]
+        }
+      ]
+    },
+    {
+      "version": 15,
+      "filename": "000015_log_lifecycle_settings.sql",
+      "checksum": "69f03c2fc21328af3f23aa5a6f80db854fd206b6d45a50a32d15f728107c60e3",
+      "platformVersion": "0.1.0",
+      "description": "Track purged run records and index log lifecycle retention candidates",
+      "sentinels": [
+        {
+          "table": "task_runs",
+          "columns": ["id", "ended_at", "record_purged_at"],
+          "indexes": ["task_runs_retention_candidates_idx"]
+        }
+      ]
+    },
+    {
+      "version": 16,
+      "filename": "000016_runtime_integrity_repairs.sql",
+      "checksum": "c68add89aaab1056279f55b100e506af81a196206de32797b43165c04b0415f8",
+      "platformVersion": "0.1.0",
+      "description": "Restore runtime continuity task binding and STREAM_ERROR gap shape integrity",
+      "sentinels": [
+        {
+          "table": "task_continuity_baselines",
+          "columns": ["id", "task_id", "task_revision_id"],
+          "constraints": ["task_continuity_baseline_revision_task_fk"]
+        },
+        {
+          "table": "log_gaps",
+          "columns": [
+            "id",
+            "reason",
+            "run_unit_id",
+            "started_at",
+            "ended_at",
+            "lost_bytes",
+            "container_restart"
+          ],
+          "constraints": ["log_gaps_reason_check"]
+        }
+      ]
+    },
+    {
+      "version": 17,
+      "filename": "000017_optional_kafka_topic_identity.sql",
+      "checksum": "371ab4378c8468570c4a5be85ec6c53048f6344791f029583b0b3b32c563206c",
+      "platformVersion": "0.1.0",
+      "description": "Allow unavailable Kafka Topic UUID and target partition facts without fabricated identities",
+      "sentinels": [
+        {
+          "table": "task_continuity_baselines",
+          "columns": ["source_topic_id", "target_topic_id", "target_partition_count"],
+          "constraints": ["task_continuity_baseline_shape"]
+        }
+      ]
+    },
+    {
+      "version": 18,
+      "filename": "000018_password_authentication.sql",
+      "checksum": "2cc317323fd76dd068f381f00dec18d933060b5e13488ab65fa16ec8bbd9e1ce",
+      "platformVersion": "0.1.0",
+      "description": "Add mandatory password change and retire pending second-factor login state",
+      "sentinels": [{ "table": "users", "columns": ["must_change_password"] }]
+    },
+    {
+      "version": 19,
+      "filename": "000019_system_storage_profiles.sql",
+      "checksum": "8a6b835a6b6f4a452293e0bf9168543dce0ca2011db6a543ccaadd7187a91cf3",
+      "platformVersion": "0.1.0",
+      "description": "Distinguish system-created storage profiles from user-created profiles",
+      "sentinels": [
+        {
+          "table": "storage_profiles",
+          "columns": ["created_by_actor_type", "created_by_user_id"],
+          "constraints": ["storage_profiles_creator_consistency"]
+        }
+      ]
+    },
+    {
+      "version": 20,
+      "filename": "000020_runtime_performance.sql",
+      "checksum": "c9674ad7cfb3888a864442952237198b2cc9f3232faf15dfda48446ed2c416cd",
+      "platformVersion": "0.1.0",
+      "description": "Store partitioned runtime performance samples, rollups, maintenance and observation gaps",
+      "sentinels": [
+        {
+          "table": "metric_samples_high",
+          "columns": ["task_id", "run_id", "unit_id", "collected_at", "gap_reason"],
+          "indexes": ["metric_samples_high_unit_time_idx"]
+        },
+        {
+          "table": "metric_rollups_1m",
+          "columns": ["task_id", "run_id", "unit_id", "bucket_start", "gap"]
+        },
+        {
+          "table": "metric_rollups_1h",
+          "columns": ["task_id", "run_id", "unit_id", "bucket_start", "gap"]
+        },
+        { "table": "metric_maintenance_state", "columns": ["id", "status", "last_attempt_at"] },
+        {
+          "table": "observability_gaps",
+          "columns": ["task_id", "run_id", "unit_id", "started_at", "ended_at", "reason"],
+          "indexes": ["observability_gaps_ended_idx"]
+        }
+      ]
+    },
+    {
+      "version": 21,
+      "filename": "000021_artifact_deletion.sql",
+      "checksum": "28522e900eec704d7f49dc851260e6edda5b9fd1741968a1c675942ebefdf3ef",
+      "platformVersion": "0.1.0",
+      "description": "Logically delete unused artifacts while protecting concurrent live bindings and historical references",
+      "sentinels": [{ "table": "artifacts", "columns": ["deleted_at", "deleted_by_user_id"] }]
+    },
+    {
+      "version": 22,
+      "filename": "000022_alert_settings.sql",
+      "checksum": "8de98fb7f6bbef37da7de1fa1c0c2c6a190497c56b49f198800bd42f34c237d7",
+      "platformVersion": "0.1.0",
+      "description": "Store encrypted alert destinations, persistent rule state and notification delivery outcomes",
+      "sentinels": [
+        {
+          "table": "alert_settings",
+          "columns": ["configuration", "encrypted_webhook", "row_version"]
+        },
+        {
+          "table": "alert_rule_states",
+          "columns": ["task_id", "rule", "first_bad_at", "alarm_sent"]
+        },
+        {
+          "table": "alert_deliveries",
+          "columns": ["task_id", "event", "status", "failure_code"],
+          "indexes": ["alert_deliveries_created_idx"]
+        },
+        {
+          "table": "audit_events",
+          "columns": ["subject_id", "occurred_at"],
+          "indexes": ["audit_events_alert_recovery_idx"]
+        }
+      ]
+    },
+    {
+      "version": 23,
+      "filename": "000023_task_mappings.sql",
+      "checksum": "1fa7dd632b683bc83f920025cad929b7cb27e8154fe1abec768fc8aa1f2cbeb9",
+      "platformVersion": "0.1.0",
+      "description": "Persist complete source-to-topic mappings and multi-topic runtime continuity snapshots",
+      "sentinels": [
+        {
+          "table": "pg_kafka_revision_configs",
+          "columns": ["mappings"],
+          "constraints": ["pg_kafka_mapping_shape"]
+        },
+        {
+          "table": "kafka_kafka_revision_configs",
+          "columns": ["mappings"],
+          "constraints": ["kafka_kafka_mapping_shape"]
+        },
+        {
+          "table": "task_continuity_baselines",
+          "columns": ["topic_snapshots"],
+          "constraints": ["task_continuity_topic_snapshots_shape"]
+        }
+      ]
+    },
+    {
+      "version": 24,
+      "filename": "000024_mysql_source_identity.sql",
+      "checksum": "dac308b044223b1b877c7b9f50e128a217c38faa53ec41501a007203715577ef",
+      "platformVersion": "0.1.0",
+      "description": "Recognize MySQL instance and database identities without rewriting existing observations",
+      "sentinels": [
+        {
+          "table": "data_source_identity_observations",
+          "columns": ["identity_kind", "identity_value"],
+          "constraints": ["data_source_identity_observations_identity_kind_check"]
+        }
+      ]
+    },
+    {
+      "version": 25,
+      "filename": "000025_mysql_task_configuration.sql",
+      "checksum": "391b806e9872b636bc89f053f592b7e9d086714f4b52d7bd4059909148b6725d",
+      "platformVersion": "0.1.0",
+      "description": "Register MySQL tasks, mapped configuration and source identity continuity without rewriting historical rows",
+      "sentinels": [
+        { "table": "tasks", "columns": ["task_type"], "constraints": ["tasks_task_type_check"] },
+        {
+          "table": "mysql_kafka_revision_configs",
+          "columns": ["task_revision_id", "source_database", "include_snapshot", "mappings"],
+          "constraints": ["mysql_kafka_mapping_shape"]
+        },
+        {
+          "table": "task_continuity_baselines",
+          "columns": ["mysql_source_identity"],
+          "constraints": [
+            "task_continuity_baseline_shape",
+            "task_continuity_baselines_baseline_kind_check"
+          ]
+        }
+      ]
+    },
+    {
+      "version": 26,
+      "filename": "000026_mysql_runtime_checkpoints.sql",
+      "checksum": "490ef07b6eb0a8337d6347db422bba3f7537ee13fa4e3715e5d110884a1f2e9b",
+      "platformVersion": "0.1.0",
+      "description": "Persist MySQL acknowledged binlog checkpoints and snapshot phase per task without rewriting other tasks",
+      "sentinels": [
+        {
+          "table": "mysql_task_checkpoints",
+          "columns": [
+            "task_id",
+            "task_revision_id",
+            "active_run_id",
+            "phase",
+            "binlog_filename",
+            "binlog_position",
+            "client_server_id",
+            "checkpoint_at"
+          ],
+          "constraints": ["mysql_task_checkpoints_pkey"]
+        }
+      ]
+    },
+    {
+      "version": 27,
+      "filename": "000027_task_groups.sql",
+      "checksum": "051f4415d4cfd80c2f4a9041d2f0617483a6a4039a7defa0b420c31040299ad7",
+      "platformVersion": "0.1.0",
+      "description": "Store shared single-level task groups independently of execution and preflight state",
+      "sentinels": [
+        {
+          "table": "task_groups",
+          "columns": ["id", "display_name", "normalized_name", "created_by_user_id"],
+          "constraints": ["task_groups_pkey", "task_groups_normalized_name_key"]
+        },
+        {
+          "table": "task_group_memberships",
+          "columns": ["task_id", "group_id"],
+          "constraints": ["task_group_memberships_pkey"],
+          "indexes": ["task_group_memberships_group_idx"]
+        }
+      ]
+    },
+    {
+      "version": 28,
+      "filename": "000028_session_settings.sql",
+      "checksum": "a5a007b80961467313d34ee65b2b9abda34a475e8ad5da5cabe424d7e836b776",
+      "platformVersion": "0.1.0",
+      "description": "Configure new login lifetimes while retaining existing session idle windows and deadlines",
+      "sentinels": [
+        {
+          "table": "auth_session_settings",
+          "columns": [
+            "singleton_id",
+            "idle_timeout_minutes",
+            "absolute_timeout_hours",
+            "row_version"
+          ],
+          "constraints": ["auth_session_settings_pkey", "auth_session_settings_lifetime_check"]
+        },
+        {
+          "table": "auth_sessions",
+          "columns": ["idle_timeout_minutes"]
+        }
+      ]
+    },
+    {
+      "version": 29,
+      "filename": "000029_imported_data_source_credentials.sql",
+      "checksum": "63e55db4f3fd8f04a2dca6d1bf20447dfa2653e7a17e7ea1b1c1fc8a562353f5",
+      "platformVersion": "0.1.0",
+      "description": "Represent imported data sources awaiting credentials without placeholder secrets",
+      "sentinels": [
+        {
+          "table": "data_sources",
+          "columns": ["credentials_required"],
+          "constraints": ["data_sources_secret_consistency"]
+        }
+      ]
+    },
+    {
+      "version": 30,
+      "filename": "000030_task_group_order.sql",
+      "checksum": "617c525bde88631538d5fc0201af8f20cd6ac7d115306298cdd0f550012b45c6",
+      "platformVersion": "0.1.0",
+      "description": "Persist shared task folder display order",
+      "sentinels": [{ "table": "task_groups", "columns": ["sort_order"] }]
+    },
+    {
+      "version": 31,
+      "filename": "000031_runtime_recovery_settings.sql",
+      "checksum": "1a0591be24d702e12e3a4adb9cd97617057125c34d28713dca816e47279da7b3",
+      "platformVersion": "0.1.0",
+      "description": "Configure bounded task auto recovery",
+      "sentinels": [
+        {
+          "table": "runtime_recovery_settings",
+          "columns": ["enabled", "max_attempts", "retry_delay_seconds", "row_version"]
+        }
+      ]
+    }
+  ]
+}

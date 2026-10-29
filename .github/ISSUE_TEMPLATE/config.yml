@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 私密安全报告 / Private security report
+    url: https://github.com/CrissMagic/ape-dts-console/security/advisories/new
+    about: 请勿在公开 Issue 中披露漏洞细节或凭据。
