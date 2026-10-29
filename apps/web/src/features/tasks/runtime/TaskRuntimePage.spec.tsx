@@ -1339,6 +1339,7 @@ describe('TaskRuntimePage', () => {
   });
 
   it('shows the real error code when log storage retry fails without refreshing facts', async () => {
+    vi.useFakeTimers();
     const pendingRuntime: RuntimeRead = {
       ...runtime,
       run: {
@@ -1354,9 +1355,14 @@ describe('TaskRuntimePage', () => {
       new PlatformApiError('LOG_STORAGE_RETRY_FAILED', 409),
     );
     render(<TaskRuntimePage onSessionInvalidated={vi.fn()} />);
-    await openRuntime();
-    fireEvent.click(await screen.findByRole('button', { name: '重试日志存储' }));
-    const failure = await screen.findByRole('alert');
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: `${task.name} 查看运行详情` }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('tab', { name: '运行日志' }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: '重试日志存储' }));
+    await act(async () => {});
+    const failure = screen.getByRole('alert');
     expect(failure).toHaveTextContent('操作失败');
     expect(failure).toHaveTextContent('LOG_STORAGE_RETRY_FAILED');
     expect(failure.closest('.ant-notification-notice')).toHaveClass('operation-notification-error');

@@ -26,5 +26,5 @@ jobs:
       - name: Verify immutable migration checksums
         run: |
           node --input-type=module -e "import {loadMigrationBundle} from './packages/database/dist/index.js'; const bundle=await loadMigrationBundle(); console.log('Verified migrations:', bundle.migrations.length)"
-      - run: corepack pnpm test
+      - run: corepack pnpm --workspace-concurrency=1 -r --if-present run test
       - run: corepack pnpm build

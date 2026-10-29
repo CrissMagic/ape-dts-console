@@ -45,6 +45,7 @@ WORKDIR /app
 COPY --from=build --chown=${APP_UID}:${APP_GID} /opt/api/ /app/
 COPY --from=build --chown=${APP_UID}:${APP_GID} /workspace/apps/web/dist/ /app/public/
 COPY --chown=${APP_UID}:${APP_GID} docker/entrypoint/entrypoint.sh /app/docker/entrypoint/entrypoint.sh
+COPY --chown=${APP_UID}:${APP_GID} LICENSE NOTICE THIRD_PARTY_NOTICES.md /app/licenses/
 
 RUN install --directory --owner="${APP_UID}" --group="${APP_GID}" --mode=0700 \
       /run/ape-dts \
