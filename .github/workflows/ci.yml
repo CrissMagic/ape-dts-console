@@ -23,5 +23,8 @@ jobs:
       - run: corepack pnpm install --frozen-lockfile
       - run: corepack pnpm lint
       - run: corepack pnpm typecheck
+      - name: Verify immutable migration checksums
+        run: |
+          node --input-type=module -e "import {loadMigrationBundle} from './packages/database/dist/index.js'; const bundle=await loadMigrationBundle(); console.log('Verified migrations:', bundle.migrations.length)"
       - run: corepack pnpm test
       - run: corepack pnpm build

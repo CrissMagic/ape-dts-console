@@ -142,7 +142,7 @@ CREATE TABLE ape_dts_platform.pg_kafka_revision_configs (
   publication_name text NOT NULL,
   include_snapshot boolean NOT NULL,
   CONSTRAINT pg_kafka_source_database_safe CHECK (
-    source_database <> '' AND source_database !~ '[\x00-\x1f\x7f]'
+    source_database <> '' AND source_database !~ '[\x00-\x1f\x7f]' 
   ),
   CONSTRAINT pg_kafka_source_schema_safe CHECK (source_schema ~ '^[A-Za-z_][A-Za-z0-9_$-]{0,62}$'),
   CONSTRAINT pg_kafka_source_table_safe CHECK (source_table ~ '^[A-Za-z_][A-Za-z0-9_$-]{0,62}$'),
